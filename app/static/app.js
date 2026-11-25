@@ -27,13 +27,23 @@ function renderHealth(health) {
   const partial = ['online', 'demo'].includes(health.onza) || ['online', 'demo'].includes(health.firebase);
   connection.className = `connection ${online ? 'online' : partial ? '' : 'error'}`;
   connection.querySelector('strong').textContent = online ? 'Все системы доступны' : partial ? 'Частичные данные' : 'Нет подключения';
-  connection.querySelector('small').textContent = `Onza: ${health.onza || '—'} · Firebase: ${health.firebase || '—'}`;
+  const sourceStatus = `Onza: ${health.onza || '—'} · Firebase: ${health.firebase || '—'}`;
+  const detail = health.message && health.message !== 'All data sources are available' ? health.message : sourceStatus;
+  connection.querySelector('small').textContent = detail;
+  connection.title = `${sourceStatus}${health.message ? ` · ${health.message}` : ''}`;
   const date = health.last_success ? new Date(health.last_success) : null;
   $('last-update').textContent = `Последнее обновление: ${date ? date.toLocaleTimeString('ru-RU') : '—'}`;
 }
 
 function renderParties(parties) {
-  const rows = parties.slice(0, 15).map((party) => {
+  const latestParties = [...parties]
+    .sort((left, right) => {
+      const leftDate = Date.parse(left.created_at || '') || 0;
+      const rightDate = Date.parse(right.created_at || '') || 0;
+      return rightDate - leftDate;
+    })
+    .slice(0, 15);
+  const rows = latestParties.map((party) => {
     const open = Number(party.status) === 0;
     const created = party.created_at ? new Date(party.created_at).toLocaleDateString('ru-RU') : '—';
     return `<tr>

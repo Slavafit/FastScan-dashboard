@@ -46,6 +46,21 @@ def normalize_tracking(value: Any) -> str:
     return "".join(character for character in _text(value).upper() if character.isalnum())
 
 
+def _timestamp(value: Any, timezone: ZoneInfo) -> float:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str) and value.strip():
+        try:
+            parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return float("-inf")
+    else:
+        return float("-inf")
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone)
+    return parsed.timestamp()
+
+
 def build_dashboard_data(
     shipments: list[dict[str, Any]],
     searches: list[dict[str, Any]],
@@ -148,6 +163,11 @@ def build_dashboard_data(
                 "raw": raw,
             }
         )
+
+    normalized_parties.sort(
+        key=lambda party: _timestamp(party["created_at"], timezone),
+        reverse=True,
+    )
 
     history = list(daily.values())
     today_row = daily[today.isoformat()]

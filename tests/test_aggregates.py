@@ -62,3 +62,15 @@ def test_party_uses_loaded_box_totals_instead_of_partial_summary() -> None:
     assert party["box_count"] == 1
     assert party["order_count"] == 12
     assert party["gross_weight"] == 23.4
+
+
+def test_parties_are_sorted_from_newest_to_oldest() -> None:
+    parties = [
+        {"guid": "old", "partial_name": "KG1", "date_created": "2026-10-01T10:00:00Z"},
+        {"guid": "missing", "partial_name": "KG0", "date_created": None},
+        {"guid": "new", "partial_name": "KG2", "date_created": "2026-11-25T10:00:00Z"},
+    ]
+
+    result = build_dashboard_data([], [], [], parties, "Europe/Madrid")
+
+    assert [party["guid"] for party in result["parties"]] == ["new", "old", "missing"]

@@ -34,6 +34,16 @@ docker compose ps
 docker compose logs -f dashboard
 ```
 
+Если интерфейс показывает, что Firebase недоступен, проверьте, что файл действительно
+называется `secrets/firebase-service-account.json`, а не остался под исходным длинным
+именем. После замены или переименования файла пересоздайте контейнер:
+
+```powershell
+docker compose down
+docker compose up -d --build
+docker compose logs --tail=100 dashboard
+```
+
 ## Демонстрационный режим
 
 Чтобы посмотреть интерфейс без Onza и Firebase, установите в `.env`:
