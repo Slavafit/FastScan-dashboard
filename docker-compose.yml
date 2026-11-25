@@ -1,0 +1,18 @@
+services:
+  dashboard:
+    build: .
+    container_name: fastscan-dashboard
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - dashboard-data:/data
+      - ${FIREBASE_CREDENTIALS_PATH_HOST:-./secrets/firebase-service-account.json}:/run/secrets/firebase-service-account.json:ro
+    environment:
+      DATABASE_PATH: /data/fastscan-dashboard.sqlite3
+      FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-service-account.json
+
+volumes:
+  dashboard-data:

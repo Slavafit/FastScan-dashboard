@@ -1,0 +1,1 @@
+"""FastScan local dashboard."""

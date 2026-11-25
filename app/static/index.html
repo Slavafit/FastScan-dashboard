@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123f27">
+  <title>FastScan Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ONZA · SPAIN WAREHOUSE</p>
+        <h1>FastScan Dashboard</h1>
+      </div>
+      <div class="connection" id="connection">
+        <span class="status-dot"></span>
+        <div><strong>Подключение…</strong><small>Ожидание данных</small></div>
+      </div>
+    </header>
+
+    <section class="metrics" aria-label="Показатели за сегодня">
+      <article class="metric metric-primary"><span>Заказы сегодня</span><strong id="orders">—</strong><small>зарегистрировано</small></article>
+      <article class="metric"><span>Общий вес</span><strong id="weight">—</strong><small>килограммов</small></article>
+      <article class="metric"><span>Коробки</span><strong id="boxes">—</strong><small>создано сегодня</small></article>
+      <article class="metric"><span>Поиски клиентов</span><strong id="searches">—</strong><small id="search-detail">найдено —</small></article>
+      <article class="metric"><span>Открытые партии</span><strong id="open-parties">—</strong><small>в работе</small></article>
+    </section>
+
+    <section class="panel chart-panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">ДИНАМИКА</p><h2>Работа склада</h2></div>
+        <div class="controls">
+          <div class="segmented" role="group" aria-label="Период">
+            <button class="active" data-days="7">7 дней</button>
+            <button data-days="31">Месяц</button>
+          </div>
+          <select id="metric-select" aria-label="Показатель графика">
+            <option value="orders">Заказы</option>
+            <option value="weight">Вес</option>
+            <option value="boxes">Коробки</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrap"><svg id="chart" role="img" aria-label="График работы склада"></svg></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">ПАРТИИ</p><h2>Последние партии</h2></div>
+        <button class="refresh" id="refresh">Обновить сейчас</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Партия</th><th>Статус</th><th>Коробки</th><th>Заказы</th><th>Вес</th><th>Создана</th></tr></thead>
+          <tbody id="parties"><tr><td colspan="6" class="empty">Ожидание данных…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer><span>Данные обновляются автоматически каждые 30 секунд</span><span id="last-update">Последнее обновление: —</span></footer>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
