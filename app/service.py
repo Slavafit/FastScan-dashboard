@@ -90,6 +90,29 @@ class DashboardService:
             self._parties,
             self.settings.warehouse_timezone,
         )
+        if not self.settings.demo_mode:
+            # Firestore now returns only today's two aggregate documents. Keep
+            # older points from SQLite so the limited live fetch cannot replace
+            # prior days with the zero-filled placeholders from aggregation.
+            previous = {
+                row["day"]: {
+                    "day": row["day"],
+                    "orders": row["orders_count"],
+                    "weight": row["total_weight"],
+                    "boxes": row["boxes_count"],
+                    "searches": row["client_searches"],
+                    "found": row["searches_found"],
+                    "not_found": row["searches_not_found"],
+                    "errors": row["search_errors"],
+                }
+                for row in self.database.history(62)
+            }
+            current_day = dashboard["summary"]["day"]
+            fresh = {row["day"]: row for row in dashboard["history"]}
+            dashboard["history"] = [
+                fresh.get(day) if day == current_day else previous.get(day, fresh.get(day))
+                for day in sorted(fresh)
+            ]
         if self._onza_status in {"online", "demo"} or self._firebase_status in {"online", "demo"}:
             self._last_success = attempt
 
