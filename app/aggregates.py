@@ -42,10 +42,6 @@ def _day(value: Any, timezone: ZoneInfo) -> str | None:
     return None
 
 
-def normalize_tracking(value: Any) -> str:
-    return "".join(character for character in _text(value).upper() if character.isalnum())
-
-
 def _timestamp(value: Any, timezone: ZoneInfo) -> float:
     if isinstance(value, datetime):
         parsed = value
@@ -62,7 +58,7 @@ def _timestamp(value: Any, timezone: ZoneInfo) -> float:
 
 
 def build_dashboard_data(
-    shipments: list[dict[str, Any]],
+    shipment_daily: list[dict[str, Any]],
     searches: list[dict[str, Any]],
     boxes: list[dict[str, Any]],
     parties: list[dict[str, Any]],
@@ -86,23 +82,18 @@ def build_dashboard_data(
         for offset in range(history_days)
     }
 
-    unique_shipments: dict[str, dict[str, Any]] = {}
-    for shipment in shipments:
-        tracking = normalize_tracking(shipment.get("trackingNumber") or shipment.get("tracking_number"))
-        if tracking:
-            unique_shipments[tracking] = shipment
-    for shipment in unique_shipments.values():
-        day = _day(shipment.get("createdAt") or shipment.get("dateString"), timezone)
+    for aggregate in shipment_daily:
+        day = _text(aggregate.get("date") or aggregate.get("_id"))
         if day in daily:
-            daily[day]["orders"] += 1
-            daily[day]["weight"] += max(0.0, _number(shipment.get("weight")))
+            daily[day]["orders"] = max(0, _integer(aggregate.get("count")))
+            daily[day]["weight"] = max(0.0, _number(aggregate.get("total_weight")))
 
     normalized_boxes: list[dict[str, Any]] = []
     seen_boxes: set[str] = set()
     for raw in boxes:
         guid = _text(raw.get("guid"))
         tracking = _text(raw.get("tracking_code"))
-        identity = guid or normalize_tracking(tracking)
+        identity = guid or "".join(character for character in tracking.upper() if character.isalnum())
         if not identity or identity in seen_boxes:
             continue
         seen_boxes.add(identity)

@@ -4,13 +4,11 @@ from zoneinfo import ZoneInfo
 from app.aggregates import build_dashboard_data
 
 
-def test_build_dashboard_data_deduplicates_orders_and_aggregates_today() -> None:
+def test_build_dashboard_data_uses_daily_order_aggregate() -> None:
     timezone = ZoneInfo("Europe/Madrid")
     now = datetime.now(timezone)
-    shipments = [
-        {"trackingNumber": " A-1 ", "weight": 2.5, "createdAt": now},
-        {"trackingNumber": "A1", "weight": 9.0, "createdAt": now},
-        {"trackingNumber": "B-2", "weight": 3.5, "createdAt": now},
+    shipment_daily = [
+        {"date": now.date().isoformat(), "count": 2, "total_weight": 12.5},
     ]
     boxes = [
         {
@@ -25,12 +23,21 @@ def test_build_dashboard_data_deduplicates_orders_and_aggregates_today() -> None
         {"date": now.date().isoformat(), "total": 5, "found": 4, "not_found": 1}
     ]
 
-    result = build_dashboard_data(shipments, searches, boxes, [], "Europe/Madrid")
+    result = build_dashboard_data(shipment_daily, searches, boxes, [], "Europe/Madrid")
 
     assert result["summary"]["orders"] == 2
     assert result["summary"]["weight"] == 12.5
     assert result["summary"]["boxes"] == 1
     assert result["summary"]["searches"] == 5
+
+
+def test_invalid_daily_values_cannot_make_totals_negative() -> None:
+    today = datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
+    result = build_dashboard_data(
+        [{"date": today, "count": -1, "total_weight": -5}], [], [], [], "Europe/Madrid"
+    )
+    assert result["summary"]["orders"] == 0
+    assert result["summary"]["weight"] == 0
 
 
 def test_party_uses_loaded_box_totals_instead_of_partial_summary() -> None:

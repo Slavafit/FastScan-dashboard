@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -30,33 +30,26 @@ class FirestoreSource:
     def configured(self) -> bool:
         return self._client is not None
 
-    def fetch(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    def fetch(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         if self._client is None:
             raise RuntimeError("Firebase service account is not configured")
 
         warehouse = self._client.collection("warehouses").document(self._settings.warehouse_id)
-        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date().isoformat()
-
-        # Only today's orders are needed for live counters. Earlier days remain
-        # in local SQLite history, avoiding a repeated historical collection scan.
-        shipments_query = (
-            warehouse.collection("shipments")
-            .where("dateString", "==", today)
-        )
-        shipments = [_document_data(doc) for doc in shipments_query.stream()]
-        searches = [
-            _document_data(doc)
-            for doc in warehouse.collection("client_search_daily").stream()
+        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date()
+        days = history_dates(today)
+        shipment_refs = [warehouse.collection("shipment_daily").document(day) for day in days]
+        search_refs = [warehouse.collection("client_search_daily").document(day) for day in days]
+        shipment_daily = [
+            _document_data(doc) for doc in self._client.get_all(shipment_refs) if doc.exists
         ]
+        searches = [
+            _document_data(doc) for doc in self._client.get_all(search_refs) if doc.exists
+        ]
+        return shipment_daily, searches
 
-        if self._settings.include_legacy_firestore:
-            legacy_query = (
-                self._client.collection("shipments")
-                .where("dateString", "==", today)
-            )
-            shipments.extend(_document_data(doc) for doc in legacy_query.stream())
 
-        return shipments, [], searches
+def history_dates(today: date, days: int = 62) -> list[str]:
+    return [(today - timedelta(days=offset)).isoformat() for offset in range(days)]
 
 
 def serialize_datetime(value: Any) -> str | None:

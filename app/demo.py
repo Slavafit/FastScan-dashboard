@@ -6,20 +6,21 @@ from zoneinfo import ZoneInfo
 
 def demo_sources(timezone_name: str) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
     now = datetime.now(ZoneInfo(timezone_name))
-    shipments: list[dict] = []
+    shipment_daily: list[dict] = []
     boxes: list[dict] = []
     searches: list[dict] = []
     for offset in range(31):
         current = now - timedelta(days=offset)
         count = 82 + ((offset * 17) % 64)
-        for index in range(count):
-            shipments.append(
-                {
-                    "trackingNumber": f"DEMO{offset:02d}{index:04d}",
-                    "weight": 1.4 + ((index * 7) % 39) / 10,
-                    "createdAt": current.replace(hour=10, minute=index % 60),
-                }
-            )
+        shipment_daily.append(
+            {
+                "date": current.date().isoformat(),
+                "count": count,
+                "total_weight": round(
+                    sum(1.4 + ((index * 7) % 39) / 10 for index in range(count)), 2
+                ),
+            }
+        )
         for index in range(5 + offset % 7):
             boxes.append(
                 {
@@ -55,4 +56,4 @@ def demo_sources(timezone_name: str) -> tuple[list[dict], list[dict], list[dict]
         }
         for index in range(7)
     ]
-    return shipments, searches, boxes, parties
+    return shipment_daily, searches, boxes, parties

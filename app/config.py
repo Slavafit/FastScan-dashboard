@@ -19,7 +19,6 @@ class Settings:
     poll_interval_seconds: int
     database_path: Path
     firebase_credentials_path: Path | None
-    include_legacy_firestore: bool
     demo_mode: bool
 
     @classmethod
@@ -34,7 +33,6 @@ class Settings:
             poll_interval_seconds=max(10, int(os.getenv("POLL_INTERVAL_SECONDS", "30"))),
             database_path=Path(os.getenv("DATABASE_PATH", "/data/fastscan-dashboard.sqlite3")),
             firebase_credentials_path=Path(credentials) if credentials else None,
-            include_legacy_firestore=_bool("INCLUDE_LEGACY_FIRESTORE", False),
             demo_mode=_bool("DASHBOARD_DEMO", False),
         )
 

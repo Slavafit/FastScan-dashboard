@@ -30,7 +30,7 @@ class DashboardService:
         self.state = state
         self.onza = OnzaClient(settings)
         self.firestore = FirestoreSource(settings)
-        self._shipments: list[dict[str, Any]] = []
+        self._shipment_daily: list[dict[str, Any]] = []
         self._searches: list[dict[str, Any]] = []
         self._boxes: list[dict[str, Any]] = []
         self._parties: list[dict[str, Any]] = []
@@ -59,7 +59,7 @@ class DashboardService:
         messages: list[str] = []
 
         if self.settings.demo_mode:
-            self._shipments, self._searches, self._boxes, self._parties = demo_sources(
+            self._shipment_daily, self._searches, self._boxes, self._parties = demo_sources(
                 self.settings.warehouse_timezone
             )
             self._onza_status = "demo"
@@ -75,7 +75,7 @@ class DashboardService:
 
             if time.monotonic() - self._last_firebase_fetch >= self._firebase_refresh_seconds:
                 try:
-                    self._shipments, _, self._searches = await asyncio.to_thread(self.firestore.fetch)
+                    self._shipment_daily, self._searches = await asyncio.to_thread(self.firestore.fetch)
                     self._firebase_status = "online"
                     self._last_firebase_fetch = time.monotonic()
                 except Exception as error:  # noqa: BLE001
@@ -84,7 +84,7 @@ class DashboardService:
                     logger.warning("Firebase refresh failed", exc_info=error)
 
         dashboard = build_dashboard_data(
-            self._shipments,
+            self._shipment_daily,
             self._searches,
             self._boxes,
             self._parties,
