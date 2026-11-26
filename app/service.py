@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -37,6 +38,8 @@ class DashboardService:
         self._firebase_status = "waiting"
         self._last_success: str | None = None
         self._refresh_lock = asyncio.Lock()
+        self._last_firebase_fetch = 0.0
+        self._firebase_refresh_seconds = 300
 
     async def close(self) -> None:
         await self.onza.close()
@@ -70,13 +73,15 @@ class DashboardService:
                 messages.append(f"Onza: {error}")
                 logger.warning("Onza refresh failed", exc_info=error)
 
-            try:
-                self._shipments, _, self._searches = await asyncio.to_thread(self.firestore.fetch)
-                self._firebase_status = "online"
-            except Exception as error:  # noqa: BLE001
-                self._firebase_status = "error"
-                messages.append(f"Firebase: {error}")
-                logger.warning("Firebase refresh failed", exc_info=error)
+            if time.monotonic() - self._last_firebase_fetch >= self._firebase_refresh_seconds:
+                try:
+                    self._shipments, _, self._searches = await asyncio.to_thread(self.firestore.fetch)
+                    self._firebase_status = "online"
+                    self._last_firebase_fetch = time.monotonic()
+                except Exception as error:  # noqa: BLE001
+                    self._firebase_status = "error"
+                    messages.append(f"Firebase: {error}")
+                    logger.warning("Firebase refresh failed", exc_info=error)
 
         dashboard = build_dashboard_data(
             self._shipments,

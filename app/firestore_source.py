@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -35,16 +35,13 @@ class FirestoreSource:
             raise RuntimeError("Firebase service account is not configured")
 
         warehouse = self._client.collection("warehouses").document(self._settings.warehouse_id)
-        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date()
-        first_day = (today - timedelta(days=61)).isoformat()
-        last_day = today.isoformat()
+        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date().isoformat()
 
-        # dateString is stored as yyyy-MM-dd by FastScan, so lexical ordering
-        # matches calendar ordering and limits reads to the dashboard chart window.
+        # Only today's orders are needed for live counters. Earlier days remain
+        # in local SQLite history, avoiding a repeated historical collection scan.
         shipments_query = (
             warehouse.collection("shipments")
-            .where("dateString", ">=", first_day)
-            .where("dateString", "<=", last_day)
+            .where("dateString", "==", today)
         )
         shipments = [_document_data(doc) for doc in shipments_query.stream()]
         searches = [
@@ -55,8 +52,7 @@ class FirestoreSource:
         if self._settings.include_legacy_firestore:
             legacy_query = (
                 self._client.collection("shipments")
-                .where("dateString", ">=", first_day)
-                .where("dateString", "<=", last_day)
+                .where("dateString", "==", today)
             )
             shipments.extend(_document_data(doc) for doc in legacy_query.stream())
 
