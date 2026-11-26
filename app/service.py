@@ -38,6 +38,8 @@ class DashboardService:
         self._firebase_status = "waiting"
         self._last_success: str | None = None
         self._refresh_lock = asyncio.Lock()
+        self._last_onza_fetch = 0.0
+        self._onza_refresh_seconds = 300
         self._last_firebase_fetch = 0.0
         self._firebase_refresh_seconds = 300
 
@@ -65,13 +67,15 @@ class DashboardService:
             self._onza_status = "demo"
             self._firebase_status = "demo"
         else:
-            try:
-                self._boxes, self._parties = await self.onza.fetch()
-                self._onza_status = "online"
-            except Exception as error:  # noqa: BLE001 - source health is reported to the UI
-                self._onza_status = "error"
-                messages.append(f"Onza: {error}")
-                logger.warning("Onza refresh failed", exc_info=error)
+            if time.monotonic() - self._last_onza_fetch >= self._onza_refresh_seconds:
+                try:
+                    self._boxes, self._parties = await self.onza.fetch()
+                    self._onza_status = "online"
+                    self._last_onza_fetch = time.monotonic()
+                except Exception as error:  # noqa: BLE001 - source health is reported to the UI
+                    self._onza_status = "error"
+                    messages.append(f"Onza: {error}")
+                    logger.warning("Onza refresh failed", exc_info=error)
 
             if time.monotonic() - self._last_firebase_fetch >= self._firebase_refresh_seconds:
                 try:
@@ -122,6 +126,7 @@ class DashboardService:
             "last_success": self._last_success,
             "last_attempt": attempt,
             "message": " · ".join(messages) if messages else "All data sources are available",
+            "source_refresh_seconds": 300,
         }
         self.database.replace_daily(dashboard["history"], attempt)
         self.database.replace_parties(dashboard["parties"], attempt)
