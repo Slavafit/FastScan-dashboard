@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import datetime
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
-from app.firestore_source import FirestoreSource, history_dates
+from app.firestore_source import FirestoreSource
 
 
 class Reference:
@@ -27,18 +28,14 @@ class Client:
         return []
 
 
-def test_fetch_reads_only_62_daily_documents_per_aggregate() -> None:
+def test_fetch_reads_only_today_aggregate_documents() -> None:
     source = FirestoreSource.__new__(FirestoreSource)
     source._settings = SimpleNamespace(warehouse_id="es-main", warehouse_timezone="Europe/Madrid")
     source._client = Client()
 
+    today = datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
     assert source.fetch() == ([], [])
-    assert len(source._client.read_paths) == 124
+    assert len(source._client.read_paths) == 2
     assert all("/shipment_daily/" in path or "/client_search_daily/" in path for path in source._client.read_paths)
+    assert all(path.endswith(f"/{today}") for path in source._client.read_paths)
     assert all("/shipments/" not in path and "/box_entries/" not in path for path in source._client.read_paths)
-
-
-def test_history_dates_are_calendar_days_not_utc_boundaries() -> None:
-    days = history_dates(date(2026, 3, 30))
-    assert days[:3] == ["2026-03-30", "2026-03-29", "2026-03-28"]
-    assert len(days) == 62

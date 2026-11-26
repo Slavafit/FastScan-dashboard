@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -35,10 +35,12 @@ class FirestoreSource:
             raise RuntimeError("Firebase service account is not configured")
 
         warehouse = self._client.collection("warehouses").document(self._settings.warehouse_id)
-        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date()
-        days = history_dates(today)
-        shipment_refs = [warehouse.collection("shipment_daily").document(day) for day in days]
-        search_refs = [warehouse.collection("client_search_daily").document(day) for day in days]
+        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date().isoformat()
+        # Fetch only today's aggregates. Earlier daily values are already retained
+        # in the dashboard's local SQLite history, so rereading 62 days every poll
+        # would spend thousands of unnecessary Firestore reads each day.
+        shipment_refs = [warehouse.collection("shipment_daily").document(today)]
+        search_refs = [warehouse.collection("client_search_daily").document(today)]
         shipment_daily = [
             _document_data(doc) for doc in self._client.get_all(shipment_refs) if doc.exists
         ]
@@ -46,10 +48,6 @@ class FirestoreSource:
             _document_data(doc) for doc in self._client.get_all(search_refs) if doc.exists
         ]
         return shipment_daily, searches
-
-
-def history_dates(today: date, days: int = 62) -> list[str]:
-    return [(today - timedelta(days=offset)).isoformat() for offset in range(days)]
 
 
 def serialize_datetime(value: Any) -> str | None:
