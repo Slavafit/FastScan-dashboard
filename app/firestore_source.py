@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from firebase_admin import credentials, firestore, initialize_app
 
@@ -34,18 +35,32 @@ class FirestoreSource:
             raise RuntimeError("Firebase service account is not configured")
 
         warehouse = self._client.collection("warehouses").document(self._settings.warehouse_id)
-        shipments = [_document_data(doc) for doc in warehouse.collection("shipments").stream()]
-        box_entries = [_document_data(doc) for doc in warehouse.collection("box_entries").stream()]
+        today = datetime.now(ZoneInfo(self._settings.warehouse_timezone)).date()
+        first_day = (today - timedelta(days=61)).isoformat()
+        last_day = today.isoformat()
+
+        # dateString is stored as yyyy-MM-dd by FastScan, so lexical ordering
+        # matches calendar ordering and limits reads to the dashboard chart window.
+        shipments_query = (
+            warehouse.collection("shipments")
+            .where("dateString", ">=", first_day)
+            .where("dateString", "<=", last_day)
+        )
+        shipments = [_document_data(doc) for doc in shipments_query.stream()]
         searches = [
             _document_data(doc)
             for doc in warehouse.collection("client_search_daily").stream()
         ]
 
         if self._settings.include_legacy_firestore:
-            shipments.extend(_document_data(doc) for doc in self._client.collection("shipments").stream())
-            box_entries.extend(_document_data(doc) for doc in self._client.collection("box_entries").stream())
+            legacy_query = (
+                self._client.collection("shipments")
+                .where("dateString", ">=", first_day)
+                .where("dateString", "<=", last_day)
+            )
+            shipments.extend(_document_data(doc) for doc in legacy_query.stream())
 
-        return shipments, box_entries, searches
+        return shipments, [], searches
 
 
 def serialize_datetime(value: Any) -> str | None:
