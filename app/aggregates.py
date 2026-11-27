@@ -57,6 +57,36 @@ def _timestamp(value: Any, timezone: ZoneInfo) -> float:
     return parsed.timestamp()
 
 
+def merge_daily_history(
+    fresh_rows: list[dict[str, Any]],
+    stored_rows: list[dict[str, Any]],
+    current_day: str,
+) -> list[dict[str, Any]]:
+    """Keep history while refreshing days for which Onza has box data."""
+    stored = {
+        row["day"]: {
+            "day": row["day"],
+            "orders": row["orders_count"],
+            "weight": row["total_weight"],
+            "boxes": row["boxes_count"],
+            "searches": row["client_searches"],
+            "found": row["searches_found"],
+            "not_found": row["searches_not_found"],
+            "errors": row["search_errors"],
+        }
+        for row in stored_rows
+    }
+    fresh = {row["day"]: row for row in fresh_rows}
+    merged = []
+    for day in sorted(fresh):
+        current = fresh[day]
+        if day == current_day or current["boxes"] > 0:
+            merged.append(current)
+        else:
+            merged.append(stored.get(day, current))
+    return merged
+
+
 def build_dashboard_data(
     shipment_daily: list[dict[str, Any]],
     searches: list[dict[str, Any]],

@@ -1,7 +1,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.aggregates import build_dashboard_data
+from app.aggregates import build_dashboard_data, merge_daily_history
 
 
 def test_build_dashboard_data_uses_daily_order_aggregate() -> None:
@@ -63,6 +63,23 @@ def test_exact_firestore_aggregate_overrides_onza_backfill_for_same_day() -> Non
 
     assert result["summary"]["orders"] == 2
     assert result["summary"]["weight"] == 7.25
+
+
+def test_onza_backfill_replaces_old_zero_rows_but_retains_days_without_boxes() -> None:
+    fresh = [
+        {"day": "2026-11-25", "orders": 7, "weight": 20.5, "boxes": 2, "searches": 0, "found": 0, "not_found": 0, "errors": 0},
+        {"day": "2026-11-24", "orders": 0, "weight": 0, "boxes": 0, "searches": 0, "found": 0, "not_found": 0, "errors": 0},
+    ]
+    stored = [
+        {"day": "2026-11-25", "orders_count": 0, "total_weight": 0, "boxes_count": 2, "client_searches": 0, "searches_found": 0, "searches_not_found": 0, "search_errors": 0},
+        {"day": "2026-11-24", "orders_count": 9, "total_weight": 18.2, "boxes_count": 1, "client_searches": 3, "searches_found": 3, "searches_not_found": 0, "search_errors": 0},
+    ]
+
+    result = merge_daily_history(fresh, stored, "2026-11-26")
+
+    by_day = {row["day"]: row for row in result}
+    assert by_day["2026-11-25"]["orders"] == 7
+    assert by_day["2026-11-24"]["orders"] == 9
 
 
 def test_party_uses_loaded_box_totals_instead_of_partial_summary() -> None:
