@@ -29,6 +29,7 @@ class DashboardDatabase:
                     searches_found INTEGER NOT NULL DEFAULT 0,
                     searches_not_found INTEGER NOT NULL DEFAULT 0,
                     search_errors INTEGER NOT NULL DEFAULT 0,
+                    history_source TEXT NOT NULL DEFAULT 'live',
                     updated_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS parties (
@@ -57,6 +58,13 @@ class DashboardDatabase:
                 );
                 """
             )
+            columns = {
+                row["name"] for row in self._connection.execute("PRAGMA table_info(daily_metrics)")
+            }
+            if "history_source" not in columns:
+                self._connection.execute(
+                    "ALTER TABLE daily_metrics ADD COLUMN history_source TEXT NOT NULL DEFAULT 'live'"
+                )
 
     def replace_daily(self, rows: list[dict[str, Any]], updated_at: str) -> None:
         with self._lock, self._connection:
@@ -91,11 +99,13 @@ class DashboardDatabase:
         with self._lock, self._connection:
             self._connection.executemany(
                 """
-                INSERT INTO daily_metrics (day, orders_count, total_weight, updated_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO daily_metrics (
+                    day, orders_count, total_weight, history_source, updated_at
+                ) VALUES (?, ?, ?, 'onza_import', ?)
                 ON CONFLICT(day) DO UPDATE SET
                     orders_count=excluded.orders_count,
                     total_weight=excluded.total_weight,
+                    history_source='onza_import',
                     updated_at=excluded.updated_at
                 """,
                 [

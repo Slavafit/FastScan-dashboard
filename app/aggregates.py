@@ -73,6 +73,7 @@ def merge_daily_history(
             "found": row["searches_found"],
             "not_found": row["searches_not_found"],
             "errors": row["search_errors"],
+            "history_source": row.get("history_source", "live"),
         }
         for row in stored_rows
     }
@@ -82,9 +83,13 @@ def merge_daily_history(
         current = dict(fresh[day])
         previous = stored.get(day)
         if day != current_day and previous:
-            # Older Firestore search totals only live in SQLite. Keep them while
-            # refreshing box counts; use Onza orders/weight only when present.
-            if current["orders"] == 0 and current["weight"] == 0:
+            # The box-list summary may omit order counts and weights. Keep
+            # detailed Onza imports permanently; otherwise use fresh Onza
+            # values when present and retain older values for empty days.
+            if previous["history_source"] == "onza_import":
+                current["orders"] = previous["orders"]
+                current["weight"] = previous["weight"]
+            elif current["orders"] == 0 and current["weight"] == 0:
                 current["orders"] = previous["orders"]
                 current["weight"] = previous["weight"]
             for key in ("searches", "found", "not_found", "errors"):
