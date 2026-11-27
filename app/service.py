@@ -100,7 +100,7 @@ class DashboardService:
             # prior days with the zero-filled placeholders from aggregation.
             current_day = dashboard["summary"]["day"]
             dashboard["history"] = merge_daily_history(
-                dashboard["history"], self.database.history(62), current_day
+                dashboard["history"], self.database.history(366), current_day
             )
         if self._onza_status in {"online", "demo"} or self._firebase_status in {"online", "demo"}:
             self._last_success = attempt

@@ -56,7 +56,7 @@ async def dashboard() -> dict:
 
 
 @app.get("/api/history")
-async def history(days: int = Query(31, ge=1, le=365)) -> list[dict]:
+async def history(days: int = Query(31, ge=1, le=366)) -> list[dict]:
     return database.history(days)
 
 
