@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -20,14 +21,21 @@ def _weight(order: dict[str, Any]) -> float:
     return max(0.0, value)
 
 
-async def backfill() -> None:
+async def backfill(year: int | None = None) -> None:
     settings = Settings.from_env()
     if not settings.onza_configured:
         raise RuntimeError("Set ONZA_LOGIN and ONZA_PASSWORD in .env first")
 
     timezone = ZoneInfo(settings.warehouse_timezone)
     today = datetime.now(timezone).date()
-    first_day = today - timedelta(days=61)
+    if year is not None:
+        if not 1 <= year <= 9998 or year > today.year:
+            raise ValueError(f"Invalid or future year: {year}")
+        first_day = date(year, 1, 1)
+        end_day = min(date(year + 1, 1, 1), today)
+    else:
+        first_day = today - timedelta(days=61)
+        end_day = today
     database = DashboardDatabase(settings.database_path)
     onza = OnzaClient(settings)
     try:
@@ -37,7 +45,7 @@ async def backfill() -> None:
         for box in boxes:
             tracking = str(box.get("tracking_code") or "").strip()
             created = _day(box.get("date_created"), timezone)
-            if not tracking or not created or not first_day.isoformat() <= created < today.isoformat():
+            if not tracking or not created or not first_day.isoformat() <= created < end_day.isoformat():
                 continue
             key = tracking.upper()
             if key in seen:
@@ -45,7 +53,9 @@ async def backfill() -> None:
             seen.add(key)
             targets.append((tracking, created))
 
-        print(f"Onza boxes to inspect: {len(targets)} ({first_day} through {today - timedelta(days=1)})")
+        period_end = end_day - timedelta(days=1)
+        period = f"{first_day} through {period_end}" if end_day > first_day else "no completed days yet"
+        print(f"Onza boxes to inspect: {len(targets)} ({period})")
         totals: dict[str, dict[str, float | int]] = defaultdict(
             lambda: {"orders": 0, "weight": 0.0, "missing_weights": 0}
         )
@@ -77,7 +87,14 @@ async def backfill() -> None:
 
 
 def main() -> None:
-    asyncio.run(backfill())
+    parser = argparse.ArgumentParser(description="Import historical order counts and weights from Onza")
+    parser.add_argument(
+        "--year",
+        type=int,
+        help="Import a calendar year through yesterday (for example: --year 2026)",
+    )
+    args = parser.parse_args()
+    asyncio.run(backfill(year=args.year))
 
 
 if __name__ == "__main__":
