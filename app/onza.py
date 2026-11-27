@@ -52,3 +52,17 @@ class OnzaClient:
         boxes = await self._get("/api/order/box")
         parties = await self._get("/api/order/partial")
         return list(boxes or []), list(parties or [])
+
+    async def fetch_boxes(self) -> list[dict[str, Any]]:
+        boxes = await self._get("/api/order/box")
+        return list(boxes or [])
+
+    async def fetch_box_orders(self, box_tracking_code: str) -> list[dict[str, Any]]:
+        orders = await self._get(
+            "/api/order/order-tracking-code", params={"boxId": box_tracking_code}
+        )
+        if not isinstance(orders, list):
+            raise RuntimeError(
+                f"Unexpected Onza response for box {box_tracking_code}: expected a list"
+            )
+        return orders

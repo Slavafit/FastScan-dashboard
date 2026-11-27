@@ -86,6 +86,24 @@ class DashboardDatabase:
                 ],
             )
 
+    def import_onza_history(self, rows: list[dict[str, Any]], updated_at: str) -> None:
+        """Replace historical order/weight totals while preserving other metrics."""
+        with self._lock, self._connection:
+            self._connection.executemany(
+                """
+                INSERT INTO daily_metrics (day, orders_count, total_weight, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(day) DO UPDATE SET
+                    orders_count=excluded.orders_count,
+                    total_weight=excluded.total_weight,
+                    updated_at=excluded.updated_at
+                """,
+                [
+                    (row["day"], row["orders"], row["weight"], updated_at)
+                    for row in rows
+                ],
+            )
+
     def replace_parties(self, parties: list[dict[str, Any]], updated_at: str) -> None:
         with self._lock, self._connection:
             self._connection.executemany(
