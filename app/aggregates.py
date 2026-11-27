@@ -104,7 +104,7 @@ def build_dashboard_data(
     boxes: list[dict[str, Any]],
     parties: list[dict[str, Any]],
     timezone_name: str,
-    history_days: int = 62,
+    history_days: int = 366,
 ) -> dict[str, Any]:
     timezone = ZoneInfo(timezone_name)
     today = datetime.now(timezone).date()

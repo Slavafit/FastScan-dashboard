@@ -1,7 +1,7 @@
 const formatNumber = new Intl.NumberFormat('ru-RU');
 const formatWeight = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 let dashboard = { summary: {}, history: [], parties: [], health: {} };
-let selectedDays = 7;
+let selectedPeriod = '7';
 let selectedMetric = 'orders';
 
 const $ = (id) => document.getElementById(id);
@@ -59,7 +59,11 @@ function renderParties(parties) {
 }
 
 function renderChart() {
-  const rows = (dashboard.history || []).slice(-selectedDays);
+  const history = dashboard.history || [];
+  const year = String(dashboard.summary?.day || '').slice(0, 4);
+  const rows = selectedPeriod === 'year'
+    ? history.filter((row) => row.day.startsWith(`${year}-`))
+    : history.slice(-Number(selectedPeriod));
   const svg = $('chart');
   if (!rows.length) { svg.innerHTML = ''; return; }
   const width = Math.max(700, svg.clientWidth || 700);
@@ -78,15 +82,17 @@ function renderChart() {
   const step = Math.max(1, Math.ceil(rows.length / 7));
   const labels = rows.map((row, index) => index % step === 0 || index === rows.length - 1
     ? `<text class="chart-label" text-anchor="middle" x="${x(index)}" y="${height - 12}">${new Date(`${row.day}T12:00:00`).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</text>` : '').join('');
-  const points = values.map((value, index) => `<circle class="chart-point" cx="${x(index)}" cy="${y(value)}" r="3.5"><title>${rows[index].day}: ${value.toFixed(selectedMetric === 'weight' ? 1 : 0)}</title></circle>`).join('');
+  const points = rows.length > 62
+    ? ''
+    : values.map((value, index) => `<circle class="chart-point" cx="${x(index)}" cy="${y(value)}" r="3.5"><title>${rows[index].day}: ${value.toFixed(selectedMetric === 'weight' ? 1 : 0)}</title></circle>`).join('');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.innerHTML = `<defs><linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2e8a55" stop-opacity=".28"/><stop offset="1" stop-color="#2e8a55" stop-opacity="0"/></linearGradient></defs>${grid}<path class="chart-area" d="${area}"/><path class="chart-line" d="${line}"/>${points}${labels}`;
 }
 
-document.querySelectorAll('[data-days]').forEach((button) => button.addEventListener('click', () => {
-  document.querySelectorAll('[data-days]').forEach((item) => item.classList.remove('active'));
+document.querySelectorAll('[data-period]').forEach((button) => button.addEventListener('click', () => {
+  document.querySelectorAll('[data-period]').forEach((item) => item.classList.remove('active'));
   button.classList.add('active');
-  selectedDays = Number(button.dataset.days);
+  selectedPeriod = button.dataset.period;
   renderChart();
 }));
 $('metric-select').addEventListener('change', (event) => { selectedMetric = event.target.value; renderChart(); });

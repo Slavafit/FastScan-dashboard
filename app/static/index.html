@@ -11,7 +11,13 @@
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">ONZA · SPAIN WAREHOUSE</p>
+        <div class="brandline">
+          <p class="eyebrow">ONZA · SPAIN WAREHOUSE</p>
+          <div class="update-info">
+            <span>Данные обновляются автоматически каждые 5 минут</span>
+            <span id="last-update">Последнее обновление: —</span>
+          </div>
+        </div>
         <h1>FastScan Dashboard</h1>
       </div>
       <div class="connection" id="connection">
@@ -33,8 +39,9 @@
         <div><p class="eyebrow">ДИНАМИКА</p><h2>Работа склада</h2></div>
         <div class="controls">
           <div class="segmented" role="group" aria-label="Период">
-            <button class="active" data-days="7">7 дней</button>
-            <button data-days="31">Месяц</button>
+            <button class="active" data-period="7">7 дней</button>
+            <button data-period="31">Месяц</button>
+            <button data-period="year">Год</button>
           </div>
           <select id="metric-select" aria-label="Показатель графика">
             <option value="orders">Заказы</option>
@@ -59,7 +66,6 @@
       </div>
     </section>
 
-    <footer><span>Данные обновляются автоматически каждые 5 минут</span><span id="last-update">Последнее обновление: —</span></footer>
   </main>
   <script src="/static/app.js" defer></script>
 </body>
