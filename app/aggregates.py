@@ -82,12 +82,6 @@ def build_dashboard_data(
         for offset in range(history_days)
     }
 
-    for aggregate in shipment_daily:
-        day = _text(aggregate.get("date") or aggregate.get("_id"))
-        if day in daily:
-            daily[day]["orders"] = max(0, _integer(aggregate.get("count")))
-            daily[day]["weight"] = max(0.0, _number(aggregate.get("total_weight")))
-
     normalized_boxes: list[dict[str, Any]] = []
     seen_boxes: set[str] = set()
     for raw in boxes:
@@ -101,6 +95,10 @@ def build_dashboard_data(
         day = _day(created_at, timezone)
         if day in daily:
             daily[day]["boxes"] += 1
+            # Onza exposes box creation date, order count and gross weight.
+            # Use these to backfill history when no exact Firebase aggregate exists.
+            daily[day]["orders"] += max(0, _integer(raw.get("orderCount")))
+            daily[day]["weight"] += max(0.0, _number(raw.get("gross_weight")))
         normalized_boxes.append(
             {
                 "guid": identity,
@@ -115,6 +113,13 @@ def build_dashboard_data(
                 "raw": raw,
             }
         )
+
+    for aggregate in shipment_daily:
+        day = _text(aggregate.get("date") or aggregate.get("_id"))
+        if day in daily:
+            # Exact FastScan totals take precedence over box-date estimates.
+            daily[day]["orders"] = max(0, _integer(aggregate.get("count")))
+            daily[day]["weight"] = max(0.0, _number(aggregate.get("total_weight")))
 
     for search in searches:
         day = _text(search.get("date") or search.get("_id"))

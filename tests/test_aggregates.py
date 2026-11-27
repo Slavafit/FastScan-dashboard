@@ -40,6 +40,31 @@ def test_invalid_daily_values_cannot_make_totals_negative() -> None:
     assert result["summary"]["weight"] == 0
 
 
+def test_onza_boxes_backfill_daily_orders_and_weight_when_no_exact_aggregate_exists() -> None:
+    day = datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
+    boxes = [
+        {"guid": "box-1", "date_created": f"{day}T09:00:00+01:00", "orderCount": 4, "gross_weight": 12.5},
+        {"guid": "box-2", "date_created": f"{day}T11:00:00+01:00", "orderCount": 3, "gross_weight": 8.0},
+    ]
+
+    result = build_dashboard_data([], [], boxes, [], "Europe/Madrid")
+
+    assert result["summary"]["orders"] == 7
+    assert result["summary"]["weight"] == 20.5
+
+
+def test_exact_firestore_aggregate_overrides_onza_backfill_for_same_day() -> None:
+    day = datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
+    boxes = [{"guid": "box-1", "date_created": f"{day}T09:00:00+01:00", "orderCount": 4, "gross_weight": 12.5}]
+
+    result = build_dashboard_data(
+        [{"date": day, "count": 2, "total_weight": 7.25}], [], boxes, [], "Europe/Madrid"
+    )
+
+    assert result["summary"]["orders"] == 2
+    assert result["summary"]["weight"] == 7.25
+
+
 def test_party_uses_loaded_box_totals_instead_of_partial_summary() -> None:
     timezone = ZoneInfo("Europe/Madrid")
     now = datetime.now(timezone)
